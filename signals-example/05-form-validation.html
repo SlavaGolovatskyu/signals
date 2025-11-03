@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form Validation Example</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      margin-bottom: 5px;
+    }
+    input.error {
+      border-color: #dc3545;
+    }
+    input.valid {
+      border-color: #28a745;
+    }
+    .error-message {
+      color: #dc3545;
+      font-size: 14px;
+      margin-bottom: 15px;
+      min-height: 20px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #007bff;
+      color: white;
+      margin-top: 10px;
+    }
+    button:hover:not(:disabled) {
+      background: #0056b3;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .success-message {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Form Validation Example</h1>
+    <p>Demonstrates reactive form validation with multiple signals and computed validation state.</p>
+    <div id="app"></div>
+  </div>
+
+  <script type="module">
+    import { createSignal, createMemo, createComponent, html, render } from '../index.js';
+
+    const Form = createComponent(() => {
+      const [email, setEmail] = createSignal('');
+      const [password, setPassword] = createSignal('');
+      const [confirmPassword, setConfirmPassword] = createSignal('');
+      const [submitted, setSubmitted] = createSignal(false);
+
+      // Validation functions
+      const emailError = createMemo(() => {
+        const value = email();
+        if (!value) return 'Email is required';
+        if (!value.includes('@')) return 'Email must contain @';
+        if (!value.includes('.')) return 'Email must contain a domain';
+        return '';
+      });
+
+      const passwordError = createMemo(() => {
+        const value = password();
+        if (!value) return 'Password is required';
+        if (value.length < 8) return 'Password must be at least 8 characters';
+        return '';
+      });
+
+      const confirmPasswordError = createMemo(() => {
+        const value = confirmPassword();
+        if (!value) return 'Please confirm your password';
+        if (value !== password()) return 'Passwords do not match';
+        return '';
+      });
+
+      const isFormValid = createMemo(() => {
+        return !emailError() && !passwordError() && !confirmPasswordError();
+      });
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        setSubmitted(true);
+        if (isFormValid()) {
+          console.log('Form submitted:', { email: email(), password: password() });
+        }
+      };
+
+      return html`
+        <form onsubmit="${handleSubmit}">
+          <div>
+            <label>Email:</label>
+            <input 
+              type="email" 
+              value="${email()}" 
+              class="${submitted() && emailError() ? 'error' : submitted() && !emailError() ? 'valid' : ''}"
+              oninput="${(e) => setEmail(e.target.value)}"
+              placeholder="Enter your email"
+            />
+            <div class="error-message">${submitted() && emailError() ? emailError() : ''}</div>
+          </div>
+
+          <div>
+            <label>Password:</label>
+            <input 
+              type="password" 
+              value="${password()}" 
+              class="${submitted() && passwordError() ? 'error' : submitted() && !passwordError() ? 'valid' : ''}"
+              oninput="${(e) => setPassword(e.target.value)}"
+              placeholder="Enter your password"
+            />
+            <div class="error-message">${submitted() && passwordError() ? passwordError() : ''}</div>
+          </div>
+
+          <div>
+            <label>Confirm Password:</label>
+            <input 
+              type="password" 
+              value="${confirmPassword()}" 
+              class="${submitted() && confirmPasswordError() ? 'error' : submitted() && !confirmPasswordError() ? 'valid' : ''}"
+              oninput="${(e) => setConfirmPassword(e.target.value)}"
+              placeholder="Confirm your password"
+            />
+            <div class="error-message">${submitted() && confirmPasswordError() ? confirmPasswordError() : ''}</div>
+          </div>
+
+          <button type="submit" ${!isFormValid() && submitted() ? 'disabled' : ''}>
+            Submit
+          </button>
+
+          ${submitted() && isFormValid() 
+            ? '<div class="success-message">Form is valid! Check console for submitted data.</div>'
+            : ''
+          }
+        </form>
+      `;
+    });
+
+    render(Form, document.getElementById('app'));
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Todo List Example</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #28a745;
+      color: white;
+    }
+    button:hover {
+      background: #218838;
+    }
+    .todo-item {
+      padding: 10px;
+      margin: 5px 0;
+      background: #f8f9fa;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .todo-item.completed {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+    .delete-btn {
+      background: #dc3545;
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+    .delete-btn:hover {
+      background: #c82333;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Todo List Example</h1>
+    <p>Demonstrates managing arrays of items with signals and dynamic rendering.</p>
+    <div id="app"></div>
+  </div>
+
+  <script type="module">
+    import { createSignal, createComponent, html, render } from '../index.js';
+
+    const TodoList = createComponent(() => {
+      const [todos, setTodos] = createSignal([]);
+      const [inputValue, setInputValue] = createSignal('');
+
+      const addTodo = () => {
+        const text = inputValue().trim();
+        if (text) {
+          setTodos([...todos(), { 
+            id: Date.now(), 
+            text, 
+            completed: false 
+          }]);
+          setInputValue('');
+        }
+      };
+
+      const toggleTodo = (id) => {
+        setTodos(todos().map(todo => 
+          todo.id === id ? { ...todo, completed: !todo.completed } : todo
+        ));
+      };
+
+      const deleteTodo = (id) => {
+        console.log('Delete clicked for id:', id);
+        setTodos(todos().filter(todo => todo.id !== id));
+      };
+
+      // Use event delegation for delete and toggle buttons
+      const handleTodoClick = (e) => {
+        const todoItem = e.target.closest('.todo-item');
+        if (!todoItem) return;
+        
+        const todoId = parseInt(todoItem.getAttribute('data-todo-id'));
+        
+        if (e.target.classList.contains('delete-btn')) {
+          deleteTodo(todoId);
+        } else if (e.target.tagName === 'SPAN' && todoItem.contains(e.target)) {
+          toggleTodo(todoId);
+        }
+      };
+
+      return html`
+        <div>
+          <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <input 
+              type="text" 
+              id="todo-input"
+              value="${inputValue()}"
+              oninput="${(e) => setInputValue(e.target.value)}"
+              onkeypress="${(e) => { if (e.key === 'Enter') addTodo(); }}"
+              placeholder="Add a new todo..."
+            />
+            <button onclick="${addTodo}">Add Todo</button>
+          </div>
+          
+          <div onclick="${handleTodoClick}">
+            <p><strong>Total: ${todos().length}</strong> | 
+               <strong>Completed: ${todos().filter(t => t.completed).length}</strong> | 
+               <strong>Remaining: ${todos().filter(t => !t.completed).length}</strong>
+            </p>
+            
+            ${todos().length === 0 
+              ? '<p style="color: #999; text-align: center;">No todos yet. Add one above!</p>'
+              : todos().map(todo => {
+                  const todoId = todo.id;
+                  return `
+                <div class="todo-item ${todo.completed ? 'completed' : ''}" data-todo-id="${todoId}">
+                  <span style="cursor: pointer; flex: 1;">
+                    ${todo.text}
+                  </span>
+                  <button class="delete-btn" data-todo-id="${todoId}">Delete</button>
+                </div>
+              `;
+                }).join('')
+            }
+          </div>
+        </div>
+      `;
+    });
+
+    render(TodoList, document.getElementById('app'));
+  </script>
+</body>
+</html>
+

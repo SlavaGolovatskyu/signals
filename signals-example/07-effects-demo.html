@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Effects Demo Example</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 700px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      margin-bottom: 15px;
+    }
+    .log-box {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px;
+      border-left: 3px solid #007bff;
+      padding-left: 10px;
+    }
+    .log-entry.effect {
+      border-left-color: #28a745;
+    }
+    .log-entry.cleanup {
+      border-left-color: #dc3545;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #007bff;
+      color: white;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .clear-btn {
+      background: #6c757d;
+    }
+    .clear-btn:hover {
+      background: #5a6268;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Effects and Cleanup Demo</h1>
+    <p>Demonstrates createEffect, onCleanup, and how they work together. Watch the console for logs.</p>
+    <div id="app"></div>
+  </div>
+
+  <script type="module">
+    import { createSignal, createEffect, onCleanup, createComponent, html, render } from '../index.js';
+
+    const EffectsDemo = createComponent(() => {
+      const [name, setName] = createSignal('');
+      const [count, setCount] = createSignal(0);
+      const [logs, setLogs] = createSignal([]);
+
+      const addLog = (message, type = 'info') => {
+        const timestamp = new Date().toLocaleTimeString();
+        // Use functional updater to avoid creating dependency on logs signal
+        setLogs(prevLogs => [...prevLogs, { message, type, timestamp }]);
+      };
+
+      // Effect that runs when name changes
+      createEffect(() => {
+        const currentName = name();
+        addLog(`Effect: Name changed to "${currentName}"`, 'effect');
+        
+        // Cleanup function returned from effect (React-style)
+        return () => {
+          addLog(`Cleanup: Effect for "${currentName}" is cleaning up`, 'cleanup');
+        };
+      });
+
+      // Effect using onCleanup
+      createEffect(() => {
+        if (count() > 0) {
+          addLog(`Effect: Count is ${count()}, setting up interval`, 'effect');
+          
+          const interval = setInterval(() => {
+            addLog(`Interval tick: count is ${count()}`, 'info');
+          }, 2000);
+
+          return () => {
+            addLog(`Cleanup: Clearing interval for count ${count()}`, 'cleanup');
+            clearInterval(interval);
+          }; 
+        }
+      });
+
+      // Component-level cleanup
+      onCleanup(() => {
+        addLog('Component unmounting - all cleanups will run', 'cleanup');
+      });
+
+      const clearLogs = () => {
+        setLogs([]);
+      };
+
+      return html`
+        <div>
+          <div>
+            <label>Name:</label>
+            <input 
+              type="text" 
+              value="${name()}" 
+              oninput="${(e) => setName(e.target.value)}"
+              placeholder="Type a name..."
+            />
+            <p>Current name: <strong>${name() || '(empty)'}</strong></p>
+          </div>
+
+          <div>
+            <label>Count:</label>
+            <input 
+              type="number" 
+              value="${count()}" 
+              oninput="${(e) => setCount(parseInt(e.target.value) || 0)}"
+              placeholder="Enter a number"
+            />
+            <p>Current count: <strong>${count()}</strong></p>
+            <button onclick="${() => setCount(c => c + 1)}">Increment</button>
+            <button onclick="${() => setCount(0)}">Reset</button>
+          </div>
+
+          <div style="margin-top: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <h3>Effect Logs:</h3>
+              <button class="clear-btn" onclick="${clearLogs}">Clear Logs</button>
+            </div>
+            <div class="log-box">
+              ${logs().length === 0 
+                ? '<p style="color: #999; text-align: center;">No logs yet. Change the name or count to see effects in action!</p>'
+                : logs().slice().reverse().map(log => `
+                  <div class="log-entry ${log.type}">
+                    <strong>[${log.timestamp}]</strong> ${log.message}
+                  </div>
+                `).join('')
+              }
+            </div>
+            <p style="color: #666; font-size: 12px; margin-top: 10px;">
+              <strong>Note:</strong> Open browser console to see additional debug logs. 
+              Cleanups run when effects re-run or component unmounts.
+            </p>
+          </div>
+        </div>
+      `;
+    });
+
+    render(EffectsDemo, document.getElementById('app'));
+  </script>
+</body>
+</html>
+
