@@ -32,7 +32,12 @@ export function createSignal(initialValue) {
 
     const write = (newValue) => {
       value = typeof newValue === 'function' ? newValue(value) : newValue;
-      subscribers.forEach(effect => effect());
+      // Call all subscribers (effects) to trigger re-renders
+      subscribers.forEach(effect => {
+        if (!effect._disabled) {
+          effect();
+        }
+      });
     };
 
     const signal = [read, write];
@@ -54,7 +59,12 @@ export function createSignal(initialValue) {
 
   const write = (newValue) => {
     value = typeof newValue === 'function' ? newValue(value) : newValue;
-    subscribers.forEach(effect => effect());
+    // Call all subscribers (effects) to trigger re-renders
+    subscribers.forEach(effect => {
+      if (!effect._disabled) {
+        effect();
+      }
+    });
   };
 
   return [read, write];

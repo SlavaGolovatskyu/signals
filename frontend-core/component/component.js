@@ -1,4 +1,4 @@
-import { setCurrentComponent } from '../../signals-core/reactive-context/reactive-context.js';
+import { setCurrentComponent, currentEffect, currentComponent } from '../../signals-core/reactive-context/reactive-context.js';
 import { createEffect } from '../../signals-core/createEffect/createEffect.js';
 import { jsxCompiler } from '../jsx-compiler/jsx-compiler.js';
 import { componentSignalRegistry } from '../../signals-core/createSignal/createSignal.js';
@@ -20,6 +20,7 @@ export function createComponent(ComponentFn) {
       _componentFn: ComponentFn, // Store reference to component function
       _props: props, // Store props
       _renderCount: 0, // Track render count for signal reuse
+      _effectsInitialized: false, // Track if effects have been initialized
       
       registerComponent(name, component) {
         this._componentRegistry[name] = component;
@@ -35,11 +36,13 @@ export function createComponent(ComponentFn) {
         
         // Set up reactive re-rendering with an effect that tracks dependencies
         let isFirstRun = true;
-        createEffect(() => {
+        let renderEffect;
+        renderEffect = createEffect(() => {
           // Track signals by calling render (which reads signals)
           // This establishes dependencies on signals used in the template
           if (this._mounted) {
             // Call render to track dependencies and re-render if needed
+            // currentEffect is set by createEffect, so signals read during render will be tracked
             const newElement = this.render();
             
             // On first run, mount the element. On subsequent runs, replace it.
@@ -186,6 +189,9 @@ export function createComponent(ComponentFn) {
       },
       
       render() {
+        // Preserve currentEffect if it's set (by the render effect)
+        // This ensures signals read during render are tracked
+        const previousComponent = currentComponent;
         setCurrentComponent(this);
         
         // Increment render count so createSignal can detect re-renders
@@ -198,9 +204,22 @@ export function createComponent(ComponentFn) {
         }
         
         // Execute ComponentFn - createSignal will reuse existing signals on re-renders
+        // Note: currentEffect should already be set by the createEffect in mount()
+        // This allows signals read during render to be tracked as dependencies
+        
+        // Mark that we're about to execute the component function
+        // This allows createEffect to know if effects should be created (first render only)
+        const isFirstRender = !this._effectsInitialized;
+        
         const result = this._componentFn(this._props);
         
-        setCurrentComponent(null);
+        // After component function execution, mark effects as initialized
+        // This prevents effects from being created on subsequent renders
+        if (isFirstRender) {
+          this._effectsInitialized = true;
+        }
+        
+        setCurrentComponent(previousComponent);
         
         // If result is an object with html property (from html template), compile it
         if (result && typeof result === 'object' && result.html) {

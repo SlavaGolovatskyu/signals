@@ -14,6 +14,7 @@ export {
   html, 
   jsx, 
   jsxCompiler, 
-  render 
+  render,
+  Fragment
 } from './frontend-core/index.js';
 
